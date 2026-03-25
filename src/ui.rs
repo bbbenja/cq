@@ -1,0 +1,124 @@
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span};
+use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::Frame;
+use crate::app::{App, HookStatus};
+
+pub fn draw(f: &mut Frame, app: &mut App) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(6),    // commit message textarea
+            Constraint::Length(8), // hook status panel
+            Constraint::Length(1), // footer
+        ])
+        .split(f.area());
+
+    draw_textarea(f, app, chunks[0]);
+    draw_hook_panel(f, app, chunks[1]);
+    draw_footer(f, chunks[2]);
+}
+
+fn draw_textarea(f: &mut Frame, app: &mut App, area: Rect) {
+    let block = Block::default()
+        .title(" Commit message ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    app.textarea.set_block(block);
+    app.textarea.set_cursor_line_style(Style::default());
+    f.render_widget(&app.textarea, area);
+}
+
+fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {
+    let (title, content) = match &app.hook_status {
+        HookStatus::NoHook => (
+            " Pre-commit hook ",
+            vec![Line::from(Span::styled(
+                "  No pre-commit hook found — will commit directly",
+                Style::default().fg(Color::DarkGray),
+            ))],
+        ),
+        HookStatus::Running => {
+            let spinner = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+            let frame = (app.tick_count / 2) % spinner.len();
+            let mut lines = vec![Line::from(Span::styled(
+                format!("  {} Running...", spinner[frame]),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ))];
+            // Show last few lines of output
+            let output = &app.hook_output;
+            let skip = output.len().saturating_sub(5);
+            for line in output.iter().skip(skip) {
+                lines.push(Line::from(Span::styled(
+                    format!("  {line}"),
+                    Style::default().fg(Color::DarkGray),
+                )));
+            }
+            (" Pre-commit hook ", lines)
+        }
+        HookStatus::Passed(elapsed) => (
+            " Pre-commit hook ",
+            vec![Line::from(Span::styled(
+                format!("  ✅ Passed ({elapsed:.1}s)"),
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ))],
+        ),
+        HookStatus::Failed(elapsed) => {
+            let mut lines = vec![Line::from(Span::styled(
+                format!("  ❌ Failed ({elapsed:.1}s)"),
+                Style::default()
+                    .fg(Color::Red)
+                    .add_modifier(Modifier::BOLD),
+            ))];
+            // Show last lines of output
+            let output = &app.hook_output;
+            let skip = output.len().saturating_sub(5);
+            for line in output.iter().skip(skip) {
+                lines.push(Line::from(Span::styled(
+                    format!("  {line}"),
+                    Style::default().fg(Color::Red),
+                )));
+            }
+            (" Pre-commit hook ", lines)
+        }
+        HookStatus::Waiting => (
+            " Pre-commit hook ",
+            vec![Line::from(Span::styled(
+                "  ⏳ Waiting for hook to finish...",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ))],
+        ),
+    };
+
+    let block = Block::default()
+        .title(title)
+        .borders(Borders::ALL)
+        .border_style(match &app.hook_status {
+            HookStatus::Passed(_) => Style::default().fg(Color::Green),
+            HookStatus::Failed(_) => Style::default().fg(Color::Red),
+            _ => Style::default().fg(Color::Yellow),
+        });
+
+    let paragraph = Paragraph::new(content).block(block).wrap(Wrap { trim: false });
+    f.render_widget(paragraph, area);
+}
+
+fn draw_footer(f: &mut Frame, area: Rect) {
+    let footer = Paragraph::new(Line::from(vec![
+        Span::styled("  Ctrl+S", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::raw(": commit   "),
+        Span::styled("Ctrl+C", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::raw("/"),
+        Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::raw(": abort"),
+    ]));
+    f.render_widget(footer, area);
+}
