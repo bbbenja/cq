@@ -20,7 +20,7 @@ A Rust TUI tool that lets you type your commit message while pre-commit hooks ru
 ### Quick install (prebuilt binary)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bcousin/cq/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/bbbenja/cq/main/install.sh | sh
 ```
 
 ### From source

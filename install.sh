@@ -4,7 +4,7 @@ set -eu
 # cq installer — downloads the latest release binary from GitHub
 # Usage: curl -fsSL https://raw.githubusercontent.com/OWNER/cq/main/install.sh | sh
 
-REPO="bcousin/cq"
+REPO="bbbenja/cq"
 INSTALL_DIR="${CQ_INSTALL_DIR:-$HOME/.local/bin}"
 
 main() {
