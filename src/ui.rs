@@ -1,9 +1,9 @@
+use crate::app::{App, HookStatus};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
-use crate::app::{App, HookStatus};
 
 pub fn draw(f: &mut Frame, app: &mut App) {
     let chunks = Layout::default()
@@ -72,9 +72,7 @@ fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {
         HookStatus::Failed(elapsed) => {
             let mut lines = vec![Line::from(Span::styled(
                 format!("  ❌ Failed ({elapsed:.1}s)"),
-                Style::default()
-                    .fg(Color::Red)
-                    .add_modifier(Modifier::BOLD),
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ))];
             // Show last lines of output
             let output = &app.hook_output;
@@ -107,17 +105,34 @@ fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {
             _ => Style::default().fg(Color::Yellow),
         });
 
-    let paragraph = Paragraph::new(content).block(block).wrap(Wrap { trim: false });
+    let paragraph = Paragraph::new(content)
+        .block(block)
+        .wrap(Wrap { trim: false });
     f.render_widget(paragraph, area);
 }
 
 fn draw_footer(f: &mut Frame, area: Rect) {
     let footer = Paragraph::new(Line::from(vec![
-        Span::styled("  Ctrl+S", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "  Ctrl+S",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(": commit   "),
-        Span::styled("Ctrl+C", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "Ctrl+C",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw("/"),
-        Span::styled("Esc", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "Esc",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::raw(": abort"),
     ]));
     f.render_widget(footer, area);

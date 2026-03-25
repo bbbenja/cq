@@ -8,7 +8,11 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "cq", version, about = "Commit quick — type your message while hooks run")]
+#[command(
+    name = "cq",
+    version,
+    about = "Commit quick — type your message while hooks run"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,

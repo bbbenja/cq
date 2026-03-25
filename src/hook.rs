@@ -67,10 +67,7 @@ pub fn spawn_hook(
     Ok(handle)
 }
 
-async fn run_hook(
-    hook_path: &PathBuf,
-    tx: &mpsc::UnboundedSender<HookEvent>,
-) -> Result<bool> {
+async fn run_hook(hook_path: &PathBuf, tx: &mpsc::UnboundedSender<HookEvent>) -> Result<bool> {
     // Get git toplevel so we run the hook from the repo root
     let output = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
