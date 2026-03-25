@@ -6,28 +6,40 @@ use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 use ratatui::Frame;
 
 pub fn draw(f: &mut Frame, app: &mut App) {
+    // Top-level: two rows — main content + footer
+    let rows = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(1), Constraint::Length(1)])
+        .split(f.area());
+
+    // Main content: two columns — left (staged + textarea) | right (hook log)
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(rows[0]);
+
+    // Left column: staged files on top, commit textarea below
     let staged_height = if app.staged_files.is_empty() {
         0
     } else {
         (app.staged_files.len() as u16 + 2).min(8)
     };
 
-    let chunks = Layout::default()
+    let left_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Min(6),                // commit message textarea
-            Constraint::Length(staged_height), // staged files panel
-            Constraint::Length(8),             // hook status panel
-            Constraint::Length(1),             // footer
-        ])
-        .split(f.area());
+        .constraints([Constraint::Length(staged_height), Constraint::Min(3)])
+        .split(columns[0]);
 
-    draw_textarea(f, app, chunks[0]);
     if staged_height > 0 {
-        draw_staged_files(f, app, chunks[1]);
+        draw_staged_files(f, app, left_chunks[0]);
     }
-    draw_hook_panel(f, app, chunks[2]);
-    draw_footer(f, app, chunks[3]);
+    draw_textarea(f, app, left_chunks[1]);
+
+    // Right column: hook panel fills the full height
+    draw_hook_panel(f, app, columns[1]);
+
+    // Footer
+    draw_footer(f, app, rows[1]);
 }
 
 fn draw_textarea(f: &mut Frame, app: &mut App, area: Rect) {
@@ -148,7 +160,6 @@ fn hook_output_lines(app: &App, max_lines: usize, color: Color) -> Vec<Line<'sta
         return vec![];
     }
 
-    // Window ends at hook_scroll + 1 (inclusive), capped to output length
     let end = (app.hook_scroll + 1).min(output.len());
     let start = end.saturating_sub(max_lines);
 

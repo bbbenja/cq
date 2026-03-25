@@ -109,11 +109,22 @@ pub async fn run(opts: CommitOpts) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Load commit template and staged files
-    let template = git::commit_template();
+    // Load initial message: amend reuses previous commit message, otherwise check template
+    let initial_message = if opts.amend {
+        git::last_commit_message()
+    } else {
+        git::commit_template()
+    };
     let staged_files = git::staged_files().unwrap_or_default();
 
-    let result = run_app(&mut terminal, hook_path, opts, template, staged_files).await;
+    let result = run_app(
+        &mut terminal,
+        hook_path,
+        opts,
+        initial_message,
+        staged_files,
+    )
+    .await;
 
     // Restore terminal
     disable_raw_mode()?;

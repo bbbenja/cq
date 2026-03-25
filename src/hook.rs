@@ -14,22 +14,53 @@ pub enum HookEvent {
     Finished { success: bool, elapsed_secs: f64 },
 }
 
-/// Returns the path to .git/hooks/pre-commit if it exists and is executable.
+/// Returns the path to the pre-commit hook if it exists and is executable.
+/// Checks `core.hooksPath` first (used by Husky and other hook managers),
+/// then falls back to `.git/hooks/`.
 pub fn find_pre_commit_hook() -> Option<PathBuf> {
-    let output = std::process::Command::new("git")
+    let root_output = std::process::Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
         .output()
         .ok()?;
 
-    if !output.status.success() {
+    if !root_output.status.success() {
         return None;
     }
 
-    let root = String::from_utf8(output.stdout).ok()?.trim().to_string();
-    let hook_path = PathBuf::from(root).join(".git/hooks/pre-commit");
+    let root = String::from_utf8(root_output.stdout)
+        .ok()?
+        .trim()
+        .to_string();
+    let root_path = PathBuf::from(&root);
+
+    // Check core.hooksPath first (Husky, lefthook, etc.)
+    let hooks_dir = std::process::Command::new("git")
+        .args(["config", "core.hooksPath"])
+        .output()
+        .ok()
+        .and_then(|o| {
+            if o.status.success() {
+                let p = String::from_utf8(o.stdout).ok()?.trim().to_string();
+                if p.is_empty() {
+                    None
+                } else {
+                    let path = PathBuf::from(&p);
+                    // Resolve relative paths against repo root
+                    Some(if path.is_absolute() {
+                        path
+                    } else {
+                        root_path.join(path)
+                    })
+                }
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| root_path.join(".git/hooks"));
+
+    let hook_path = hooks_dir.join("pre-commit");
 
     if hook_path.exists() {
-        // Check if executable (unix)
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;

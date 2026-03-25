@@ -68,6 +68,25 @@ fn dirs_path() -> Option<PathBuf> {
     std::env::var("HOME").ok().map(PathBuf::from)
 }
 
+/// Return the message of the last commit (for --amend).
+pub fn last_commit_message() -> Option<String> {
+    let output = Command::new("git")
+        .args(["log", "-1", "--format=%B"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let msg = String::from_utf8(output.stdout).ok()?.trim().to_string();
+    if msg.is_empty() {
+        None
+    } else {
+        Some(msg)
+    }
+}
+
 /// Return the list of staged files with their status (e.g. "M  src/main.rs").
 pub fn staged_files() -> Result<Vec<String>> {
     let output = Command::new("git")
