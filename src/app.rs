@@ -5,10 +5,10 @@ use crossterm::terminal::{
 };
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
+use ratatui_textarea::TextArea;
 use std::io;
 use std::time::Duration;
 use tokio::sync::mpsc;
-use tui_textarea::TextArea;
 
 use crate::git;
 use crate::hook::{self, HookEvent};
