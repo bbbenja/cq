@@ -1,4 +1,5 @@
 use anyhow::{bail, Result};
+use std::path::PathBuf;
 use std::process::Command;
 
 /// Check we are inside a git repository.
@@ -23,6 +24,48 @@ pub fn has_staged_changes() -> Result<bool> {
 
     // exit code 1 means there ARE differences (i.e. staged changes exist)
     Ok(!status.success())
+}
+
+/// Read the commit template from git config, if set.
+/// Strips comment lines (starting with `#`).
+pub fn commit_template() -> Option<String> {
+    let output = Command::new("git")
+        .args(["config", "commit.template"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+
+    let raw_path = String::from_utf8(output.stdout).ok()?.trim().to_string();
+    if raw_path.is_empty() {
+        return None;
+    }
+
+    // Resolve ~ to home directory
+    let path = if let Some(rest) = raw_path.strip_prefix("~/") {
+        if let Some(home) = dirs_path() {
+            home.join(rest)
+        } else {
+            PathBuf::from(&raw_path)
+        }
+    } else {
+        PathBuf::from(&raw_path)
+    };
+
+    let content = std::fs::read_to_string(path).ok()?;
+    let filtered: Vec<&str> = content.lines().filter(|l| !l.starts_with('#')).collect();
+    let result = filtered.join("\n").trim().to_string();
+    if result.is_empty() {
+        None
+    } else {
+        Some(result)
+    }
+}
+
+fn dirs_path() -> Option<PathBuf> {
+    std::env::var("HOME").ok().map(PathBuf::from)
 }
 
 /// Finalize the commit with --no-verify (hooks already ran manually).

@@ -36,9 +36,13 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    fn new(commit_opts: CommitOpts) -> Self {
+    fn new(commit_opts: CommitOpts, template: Option<String>) -> Self {
         let mut textarea = TextArea::default();
         textarea.set_placeholder_text("Enter commit message...");
+        if let Some(ref tmpl) = template {
+            let lines: Vec<&str> = tmpl.lines().collect();
+            textarea = TextArea::new(lines.iter().map(|l| l.to_string()).collect());
+        }
         Self {
             textarea,
             hook_status: HookStatus::Running,
@@ -68,7 +72,10 @@ pub async fn run(opts: CommitOpts) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let result = run_app(&mut terminal, hook_path, opts).await;
+    // Load commit template
+    let template = git::commit_template();
+
+    let result = run_app(&mut terminal, hook_path, opts, template).await;
 
     // Restore terminal
     disable_raw_mode()?;
@@ -94,8 +101,9 @@ async fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     hook_path: Option<std::path::PathBuf>,
     opts: CommitOpts,
+    template: Option<String>,
 ) -> Result<Option<String>> {
-    let mut app = App::new(opts);
+    let mut app = App::new(opts, template);
 
     // Set up hook channel
     let (tx, mut rx) = mpsc::unbounded_channel::<HookEvent>();
