@@ -29,21 +29,12 @@ curl -fsSL https://raw.githubusercontent.com/bbbenja/cq/main/install.sh | sh
 cargo install --path .
 ```
 
-### Set up the git alias
-
-```bash
-cq install    # git commit now calls cq
-cq uninstall  # restore default git commit
-```
-
 ## Usage
 
-Stage your changes, then commit:
+Stage your changes, then run:
 
 ```bash
 git add -p
-git commit    # opens cq if the alias is installed
-# or run directly:
 cq
 ```
 

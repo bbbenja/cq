@@ -1,11 +1,10 @@
 mod app;
 mod git;
 mod hook;
-mod install;
 mod ui;
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::Parser;
 
 #[derive(Parser)]
 #[command(
@@ -14,9 +13,6 @@ use clap::{Parser, Subcommand};
     about = "Commit quick — type your message while hooks run"
 )]
 struct Cli {
-    #[command(subcommand)]
-    command: Option<Commands>,
-
     /// Amend the previous commit
     #[arg(long)]
     amend: bool,
@@ -44,14 +40,6 @@ struct Cli {
     /// Use conventional commit format (type/scope selector)
     #[arg(short = 'c', long)]
     conventional: bool,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    /// Set up the global git alias so `git commit` calls cq
-    Install,
-    /// Remove the global git alias
-    Uninstall,
 }
 
 /// Options forwarded to the final `git commit` call.
@@ -104,14 +92,8 @@ impl CommitOpts {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    match cli.command {
-        Some(Commands::Install) => install::install()?,
-        Some(Commands::Uninstall) => install::uninstall()?,
-        None => {
-            let opts = CommitOpts::from_cli(&cli);
-            app::run(opts).await?;
-        }
-    }
+    let opts = CommitOpts::from_cli(&cli);
+    app::run(opts).await?;
 
     Ok(())
 }

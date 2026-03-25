@@ -31,7 +31,6 @@ The app is a single-binary async TUI (tokio + ratatui + crossterm).
 - **`hook.rs`** — Finds the pre-commit hook (checks `core.hooksPath` first for Husky/lefthook support, falls back to `.git/hooks/`). Spawns it async and streams stdout/stderr as `HookEvent`s via an unbounded mpsc channel.
 - **`ui.rs`** — Stateless rendering. Three-panel layout: commit message textarea, hook status panel (with spinner/output), footer with keybindings.
 - **`git.rs`** — Thin wrappers around git commands (repo check, staged changes check, commit with `--no-verify`).
-- **`install.rs`** — Sets/unsets `git config --global alias.commit` to point at the `cq` binary.
 
 ### Design decisions
 
