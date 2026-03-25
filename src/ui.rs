@@ -338,6 +338,22 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
         }
     };
 
+    let version = Span::styled(
+        format!("v{} ", env!("CARGO_PKG_VERSION")),
+        Style::default().fg(Color::DarkGray),
+    );
+
+    let footer_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Min(1),
+            Constraint::Length(version.width() as u16),
+        ])
+        .split(area);
+
     let footer = Paragraph::new(Line::from(spans));
-    f.render_widget(footer, area);
+    f.render_widget(footer, footer_layout[0]);
+
+    let version_widget = Paragraph::new(Line::from(version));
+    f.render_widget(version_widget, footer_layout[1]);
 }
