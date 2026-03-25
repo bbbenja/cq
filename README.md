@@ -3,13 +3,14 @@
 A Rust TUI tool that lets you type your commit message while pre-commit hooks run in the background. No more waiting.
 
 ```
-┌─ Staged files (2) ──────────┬─ Pre-commit hook ─────────────┐
-│  M  src/main.rs             │  ✅ Passed (1.3s)             │
-│  A  src/utils.rs            │                               │
-├─ Commit message ────────────┤                               │
-│                             │                               │
-│  fix: resolve race in pool  │                               │
-│                             │                               │
+┌─ Staged files (2) ──────────┬─ Recent commits ──────────────┐
+│  M  src/main.rs             │  a2d7437 feat: show 5 recent  │
+│  A  src/utils.rs            │  fcd5def fix: amend pre-fills  │
+├─ Commit message ────────────┤  2b5a701 feat: add Ctrl+T     │
+│                             │  010283f feat: retry failed    │
+│  fix: resolve race in pool  │  24642cb feat: scrollable     │
+│                             ├─ Pre-commit hook ─────────────┤
+│                             │  ✅ Passed (1.3s)             │
 └─────────────────────────────┴───────────────────────────────┘
   Ctrl+S: commit   Ctrl+T: type   Ctrl+C/Esc: abort
 ```
@@ -67,7 +68,7 @@ The TUI opens immediately. Start typing your commit message — the pre-commit h
 The TUI is split into two columns:
 
 - **Left** — staged files list (color-coded: green=added, yellow=modified, red=deleted) and the commit message editor
-- **Right** — live pre-commit hook output with scrollable log
+- **Right** — last 5 commits for context, then live pre-commit hook output with scrollable log
 
 ### Hook status
 
