@@ -70,6 +70,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -80,10 +84,19 @@ jobs:
           cd artifacts
           sha256sum cq-*.tar.gz > sha256sums.txt
 
+      - name: Extract changelog from tag
+        id: changelog
+        run: |
+          {
+            echo "body<<CHANGELOG_EOF"
+            git tag -l --format='%(contents)' "$GITHUB_REF_NAME"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          generate_release_notes: true
+          body: ${{ steps.changelog.outputs.body }}
           files: |
             artifacts/cq-*.tar.gz
             artifacts/sha256sums.txt

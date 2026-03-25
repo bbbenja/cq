@@ -61,9 +61,63 @@ cargo test
 git add Cargo.toml Cargo.lock
 git commit -m "chore: bump version to ${VERSION}"
 
-# Create and push tag
+# Generate changelog from commits since last tag
+echo "Generating changelog..."
+CHANGELOG=$(mktemp)
+
+PREV_TAG=$(git describe --tags --abbrev=0 HEAD~ 2>/dev/null || echo "")
+
+if [ -n "$PREV_TAG" ]; then
+    RANGE="${PREV_TAG}..HEAD"
+else
+    RANGE="HEAD"
+fi
+
+FEATS=""
+FIXES=""
+OTHER=""
+
+while IFS= read -r msg; do
+    case "$msg" in
+        feat*) FEATS="${FEATS}- ${msg}
+" ;;
+        fix*) FIXES="${FIXES}- ${msg}
+" ;;
+        chore:\ bump*) ;; # skip version bump commits
+        *) OTHER="${OTHER}- ${msg}
+" ;;
+    esac
+done <<EOF
+$(git log --format="%s" "$RANGE")
+EOF
+
+{
+    echo "# Release ${TAG}"
+    echo ""
+    if [ -n "$FEATS" ]; then
+        echo "## Features"
+        printf "%s" "$FEATS"
+        echo ""
+    fi
+    if [ -n "$FIXES" ]; then
+        echo "## Bug Fixes"
+        printf "%s" "$FIXES"
+        echo ""
+    fi
+    if [ -n "$OTHER" ]; then
+        echo "## Other"
+        printf "%s" "$OTHER"
+        echo ""
+    fi
+} > "$CHANGELOG"
+
+echo "Changelog:"
+cat "$CHANGELOG"
+
+# Create tag with changelog
 echo "Creating tag ${TAG}..."
-git tag -a "$TAG" -m "Release ${TAG}"
+git tag -a "$TAG" -F "$CHANGELOG"
+rm -f "$CHANGELOG"
 
 echo ""
 echo "Ready to release! Run:"
