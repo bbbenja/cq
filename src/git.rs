@@ -68,6 +68,20 @@ fn dirs_path() -> Option<PathBuf> {
     std::env::var("HOME").ok().map(PathBuf::from)
 }
 
+/// Return the list of staged files with their status (e.g. "M  src/main.rs").
+pub fn staged_files() -> Result<Vec<String>> {
+    let output = Command::new("git")
+        .args(["diff", "--cached", "--name-status"])
+        .output()?;
+
+    if !output.status.success() {
+        bail!("Failed to list staged files");
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.lines().map(|l| l.to_string()).collect())
+}
+
 /// Finalize the commit with --no-verify (hooks already ran manually).
 /// `extra_args` are appended to the command (e.g. --amend, --signoff).
 pub fn commit(message: &str, extra_args: &[String]) -> Result<String> {

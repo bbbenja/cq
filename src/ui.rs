@@ -6,18 +6,28 @@ use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Frame;
 
 pub fn draw(f: &mut Frame, app: &mut App) {
+    let staged_height = if app.staged_files.is_empty() {
+        0
+    } else {
+        (app.staged_files.len() as u16 + 2).min(8)
+    };
+
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(6),    // commit message textarea
-            Constraint::Length(8), // hook status panel
-            Constraint::Length(1), // footer
+            Constraint::Min(6),                // commit message textarea
+            Constraint::Length(staged_height), // staged files panel
+            Constraint::Length(8),             // hook status panel
+            Constraint::Length(1),             // footer
         ])
         .split(f.area());
 
     draw_textarea(f, app, chunks[0]);
-    draw_hook_panel(f, app, chunks[1]);
-    draw_footer(f, chunks[2]);
+    if staged_height > 0 {
+        draw_staged_files(f, app, chunks[1]);
+    }
+    draw_hook_panel(f, app, chunks[2]);
+    draw_footer(f, chunks[3]);
 }
 
 fn draw_textarea(f: &mut Frame, app: &mut App, area: Rect) {
@@ -29,6 +39,38 @@ fn draw_textarea(f: &mut Frame, app: &mut App, area: Rect) {
     app.textarea.set_block(block);
     app.textarea.set_cursor_line_style(Style::default());
     f.render_widget(&app.textarea, area);
+}
+
+fn draw_staged_files(f: &mut Frame, app: &App, area: Rect) {
+    let lines: Vec<Line> = app
+        .staged_files
+        .iter()
+        .map(|entry| {
+            let color = if entry.starts_with('A') {
+                Color::Green
+            } else if entry.starts_with('D') {
+                Color::Red
+            } else if entry.starts_with('M') {
+                Color::Yellow
+            } else {
+                Color::DarkGray
+            };
+            Line::from(Span::styled(
+                format!("  {entry}"),
+                Style::default().fg(color),
+            ))
+        })
+        .collect();
+
+    let block = Block::default()
+        .title(format!(" Staged files ({}) ", app.staged_files.len()))
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let paragraph = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
+    f.render_widget(paragraph, area);
 }
 
 fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {

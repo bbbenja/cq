@@ -33,10 +33,11 @@ pub struct App<'a> {
     /// Set when user wants to submit but hook is still running
     pub pending_submit: bool,
     pub commit_opts: CommitOpts,
+    pub staged_files: Vec<String>,
 }
 
 impl<'a> App<'a> {
-    fn new(commit_opts: CommitOpts, template: Option<String>) -> Self {
+    fn new(commit_opts: CommitOpts, template: Option<String>, staged_files: Vec<String>) -> Self {
         let mut textarea = TextArea::default();
         textarea.set_placeholder_text("Enter commit message...");
         if let Some(ref tmpl) = template {
@@ -50,6 +51,7 @@ impl<'a> App<'a> {
             tick_count: 0,
             pending_submit: false,
             commit_opts,
+            staged_files,
         }
     }
 }
@@ -72,10 +74,11 @@ pub async fn run(opts: CommitOpts) -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    // Load commit template
+    // Load commit template and staged files
     let template = git::commit_template();
+    let staged_files = git::staged_files().unwrap_or_default();
 
-    let result = run_app(&mut terminal, hook_path, opts, template).await;
+    let result = run_app(&mut terminal, hook_path, opts, template, staged_files).await;
 
     // Restore terminal
     disable_raw_mode()?;
@@ -102,8 +105,9 @@ async fn run_app(
     hook_path: Option<std::path::PathBuf>,
     opts: CommitOpts,
     template: Option<String>,
+    staged_files: Vec<String>,
 ) -> Result<Option<String>> {
-    let mut app = App::new(opts, template);
+    let mut app = App::new(opts, template, staged_files);
 
     // Set up hook channel
     let (tx, mut rx) = mpsc::unbounded_channel::<HookEvent>();
