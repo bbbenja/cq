@@ -27,7 +27,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         draw_staged_files(f, app, chunks[1]);
     }
     draw_hook_panel(f, app, chunks[2]);
-    draw_footer(f, chunks[3]);
+    draw_footer(f, app, chunks[3]);
 }
 
 fn draw_textarea(f: &mut Frame, app: &mut App, area: Rect) {
@@ -176,8 +176,8 @@ fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(paragraph, area);
 }
 
-fn draw_footer(f: &mut Frame, area: Rect) {
-    let footer = Paragraph::new(Line::from(vec![
+fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
+    let mut spans = vec![
         Span::styled(
             "  Ctrl+S",
             Style::default()
@@ -199,6 +199,19 @@ fn draw_footer(f: &mut Frame, area: Rect) {
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw(": abort"),
-    ]));
+    ];
+
+    if matches!(app.hook_status, HookStatus::Failed(_)) {
+        spans.push(Span::raw("   "));
+        spans.push(Span::styled(
+            "Ctrl+R",
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ));
+        spans.push(Span::raw(": retry"));
+    }
+
+    let footer = Paragraph::new(Line::from(spans));
     f.render_widget(footer, area);
 }

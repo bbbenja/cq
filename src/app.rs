@@ -117,12 +117,11 @@ async fn run_app(
     let (tx, mut rx) = mpsc::unbounded_channel::<HookEvent>();
 
     // Spawn hook if it exists
-    let _hook_handle = if let Some(path) = hook_path {
-        Some(hook::spawn_hook(path, tx)?)
+    if let Some(ref path) = hook_path {
+        hook::spawn_hook(path.clone(), tx)?;
     } else {
         app.hook_status = HookStatus::NoHook;
-        None
-    };
+    }
 
     loop {
         // Draw
@@ -161,6 +160,17 @@ async fn run_app(
                 match handle_key(&mut app, key) {
                     Action::Continue => {}
                     Action::Abort => return Ok(None),
+                    Action::Retry => {
+                        if let Some(ref path) = hook_path {
+                            app.hook_status = HookStatus::Running;
+                            app.hook_output.clear();
+                            app.hook_scroll = 0;
+                            app.hook_auto_scroll = true;
+                            let (new_tx, new_rx) = mpsc::unbounded_channel::<HookEvent>();
+                            rx = new_rx;
+                            hook::spawn_hook(path.clone(), new_tx)?;
+                        }
+                    }
                     Action::Submit => {
                         let message = app.textarea.lines().join("\n").trim().to_string();
                         if message.is_empty() {
@@ -192,6 +202,7 @@ enum Action {
     Continue,
     Abort,
     Submit,
+    Retry,
 }
 
 fn handle_key(app: &mut App, key: KeyEvent) -> Action {
@@ -221,6 +232,19 @@ fn handle_key(app: &mut App, key: KeyEvent) -> Action {
             modifiers: KeyModifiers::CONTROL,
             ..
         } => Action::Submit,
+
+        // Ctrl+R → retry hook (only when failed)
+        KeyEvent {
+            code: KeyCode::Char('r'),
+            modifiers: KeyModifiers::CONTROL,
+            ..
+        } => {
+            if matches!(app.hook_status, HookStatus::Failed(_)) {
+                Action::Retry
+            } else {
+                Action::Continue
+            }
+        }
 
         // Alt+Up / Alt+Down → scroll hook output
         KeyEvent {
