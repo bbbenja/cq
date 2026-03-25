@@ -17,6 +17,14 @@ A Rust TUI tool that lets you type your commit message while pre-commit hooks ru
 
 ## Install
 
+### Quick install (prebuilt binary)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bcousin/cq/main/install.sh | sh
+```
+
+### From source
+
 ```bash
 cargo install --path .
 ```
@@ -92,10 +100,18 @@ Press **Ctrl+T** (or start with `cq -c`) to open the type selector:
 
 cq supports hooks managed by [Husky](https://typicode.github.io/husky/), [lefthook](https://github.com/evilmartians/lefthook), and any tool that sets `core.hooksPath`. It also reads `commit.template` from git config.
 
+## Releasing
+
+```bash
+./scripts/release.sh 0.2.0   # bumps Cargo.toml, commits, tags
+git push && git push --tags   # triggers GitHub Actions build + release
+```
+
+The release workflow builds binaries for Linux (x86_64, aarch64) and macOS (x86_64, aarch64), then publishes them to GitHub Releases with SHA256 checksums.
+
 ## Requirements
 
 - macOS or Linux
-- Rust stable toolchain
 - Git
 
 ## License
