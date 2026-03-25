@@ -1,8 +1,8 @@
-use crate::app::{App, HookStatus};
+use crate::app::{App, HookStatus, InputMode, COMMIT_TYPES};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
+use ratatui::widgets::{Block, Borders, List, ListItem, Paragraph, Wrap};
 use ratatui::Frame;
 
 pub fn draw(f: &mut Frame, app: &mut App) {
@@ -31,14 +31,83 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 }
 
 fn draw_textarea(f: &mut Frame, app: &mut App, area: Rect) {
+    match app.input_mode {
+        InputMode::SelectType => draw_type_selector(f, app, area),
+        InputMode::EnterScope => draw_scope_input(f, app, area),
+        InputMode::EditMessage => {
+            let block = Block::default()
+                .title(" Commit message ")
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Cyan));
+
+            app.textarea.set_block(block);
+            app.textarea.set_cursor_line_style(Style::default());
+            f.render_widget(&app.textarea, area);
+        }
+    }
+}
+
+fn draw_type_selector(f: &mut Frame, app: &App, area: Rect) {
+    let items: Vec<ListItem> = COMMIT_TYPES
+        .iter()
+        .enumerate()
+        .map(|(i, (name, desc))| {
+            let style = if i == app.type_selection {
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD | Modifier::REVERSED)
+            } else {
+                Style::default()
+            };
+            ListItem::new(Line::from(vec![
+                Span::styled(format!("  {name:<10}"), style),
+                Span::styled(
+                    format!(" {desc}"),
+                    if i == app.type_selection {
+                        style
+                    } else {
+                        Style::default().fg(Color::DarkGray)
+                    },
+                ),
+            ]))
+        })
+        .collect();
+
     let block = Block::default()
-        .title(" Commit message ")
+        .title(" Select commit type (↑/↓ Enter) ")
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan));
 
-    app.textarea.set_block(block);
-    app.textarea.set_cursor_line_style(Style::default());
-    f.render_widget(&app.textarea, area);
+    let list = List::new(items).block(block);
+    f.render_widget(list, area);
+}
+
+fn draw_scope_input(f: &mut Frame, app: &App, area: Rect) {
+    let (type_name, _) = COMMIT_TYPES[app.type_selection];
+    let block = Block::default()
+        .title(format!(
+            " {type_name} — enter scope (optional, Enter to skip) "
+        ))
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Cyan));
+
+    let content = Line::from(vec![
+        Span::raw("  "),
+        Span::styled(
+            format!("{}(", type_name),
+            Style::default().fg(Color::DarkGray),
+        ),
+        Span::styled(
+            &app.scope_input,
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("): ", Style::default().fg(Color::DarkGray)),
+    ]);
+
+    let paragraph = Paragraph::new(content).block(block);
+    f.render_widget(paragraph, area);
 }
 
 fn draw_staged_files(f: &mut Frame, app: &App, area: Rect) {
@@ -177,40 +246,42 @@ fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
-    let mut spans = vec![
-        Span::styled(
-            "  Ctrl+S",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(": commit   "),
-        Span::styled(
-            "Ctrl+C",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw("/"),
-        Span::styled(
-            "Esc",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::raw(": abort"),
-    ];
+    let key_style = Style::default()
+        .fg(Color::Cyan)
+        .add_modifier(Modifier::BOLD);
 
-    if matches!(app.hook_status, HookStatus::Failed(_)) {
-        spans.push(Span::raw("   "));
-        spans.push(Span::styled(
-            "Ctrl+R",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        ));
-        spans.push(Span::raw(": retry"));
-    }
+    let spans = match app.input_mode {
+        InputMode::SelectType => vec![
+            Span::styled("  ↑/↓", key_style),
+            Span::raw(": navigate   "),
+            Span::styled("Enter", key_style),
+            Span::raw(": select   "),
+            Span::styled("Esc", key_style),
+            Span::raw(": abort"),
+        ],
+        InputMode::EnterScope => vec![
+            Span::styled("  Enter", key_style),
+            Span::raw(": confirm   "),
+            Span::styled("Esc", key_style),
+            Span::raw(": abort"),
+        ],
+        InputMode::EditMessage => {
+            let mut s = vec![
+                Span::styled("  Ctrl+S", key_style),
+                Span::raw(": commit   "),
+                Span::styled("Ctrl+C", key_style),
+                Span::raw("/"),
+                Span::styled("Esc", key_style),
+                Span::raw(": abort"),
+            ];
+            if matches!(app.hook_status, HookStatus::Failed(_)) {
+                s.push(Span::raw("   "));
+                s.push(Span::styled("Ctrl+R", key_style));
+                s.push(Span::raw(": retry"));
+            }
+            s
+        }
+    };
 
     let footer = Paragraph::new(Line::from(spans));
     f.render_widget(footer, area);

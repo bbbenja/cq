@@ -40,6 +40,10 @@ struct Cli {
     /// Allow empty commits (no staged changes required)
     #[arg(long)]
     allow_empty: bool,
+
+    /// Use conventional commit format (type/scope selector)
+    #[arg(short = 'c', long)]
+    conventional: bool,
 }
 
 #[derive(Subcommand)]
@@ -56,6 +60,7 @@ pub struct CommitOpts {
     pub amend: bool,
     pub all: bool,
     pub allow_empty: bool,
+    pub conventional: bool,
     pub extra_args: Vec<String>,
 }
 
@@ -84,6 +89,7 @@ impl CommitOpts {
             amend: cli.amend,
             all: cli.all,
             allow_empty: cli.allow_empty,
+            conventional: cli.conventional,
             extra_args,
         }
     }

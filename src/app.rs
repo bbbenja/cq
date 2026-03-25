@@ -15,6 +15,26 @@ use crate::hook::{self, HookEvent};
 use crate::ui;
 use crate::CommitOpts;
 
+pub const COMMIT_TYPES: &[(&str, &str)] = &[
+    ("feat", "A new feature"),
+    ("fix", "A bug fix"),
+    ("chore", "Maintenance tasks"),
+    ("refactor", "Code restructuring"),
+    ("docs", "Documentation changes"),
+    ("test", "Adding or updating tests"),
+    ("style", "Formatting, whitespace"),
+    ("ci", "CI/CD changes"),
+    ("perf", "Performance improvements"),
+    ("build", "Build system changes"),
+];
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum InputMode {
+    SelectType,
+    EnterScope,
+    EditMessage,
+}
+
 #[derive(Debug, Clone)]
 pub enum HookStatus {
     NoHook,
@@ -36,6 +56,9 @@ pub struct App<'a> {
     pub staged_files: Vec<String>,
     pub hook_scroll: usize,
     pub hook_auto_scroll: bool,
+    pub input_mode: InputMode,
+    pub type_selection: usize,
+    pub scope_input: String,
 }
 
 impl<'a> App<'a> {
@@ -46,6 +69,11 @@ impl<'a> App<'a> {
             let lines: Vec<&str> = tmpl.lines().collect();
             textarea = TextArea::new(lines.iter().map(|l| l.to_string()).collect());
         }
+        let input_mode = if commit_opts.conventional {
+            InputMode::SelectType
+        } else {
+            InputMode::EditMessage
+        };
         Self {
             textarea,
             hook_status: HookStatus::Running,
@@ -56,6 +84,9 @@ impl<'a> App<'a> {
             staged_files,
             hook_scroll: 0,
             hook_auto_scroll: true,
+            input_mode,
+            type_selection: 0,
+            scope_input: String::new(),
         }
     }
 }
@@ -206,19 +237,77 @@ enum Action {
 }
 
 fn handle_key(app: &mut App, key: KeyEvent) -> Action {
+    // Global keybindings (all modes)
     match key {
-        // Ctrl+C or Esc → abort
         KeyEvent {
             code: KeyCode::Char('c'),
             modifiers: KeyModifiers::CONTROL,
             ..
-        }
-        | KeyEvent {
+        } => return Action::Abort,
+        KeyEvent {
             code: KeyCode::Esc,
             modifiers: KeyModifiers::NONE,
             ..
-        } => Action::Abort,
+        } => return Action::Abort,
+        _ => {}
+    }
 
+    match app.input_mode {
+        InputMode::SelectType => handle_key_select_type(app, key),
+        InputMode::EnterScope => handle_key_enter_scope(app, key),
+        InputMode::EditMessage => handle_key_edit_message(app, key),
+    }
+}
+
+fn handle_key_select_type(app: &mut App, key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Up => {
+            if app.type_selection > 0 {
+                app.type_selection -= 1;
+            }
+            Action::Continue
+        }
+        KeyCode::Down => {
+            if app.type_selection < COMMIT_TYPES.len() - 1 {
+                app.type_selection += 1;
+            }
+            Action::Continue
+        }
+        KeyCode::Enter => {
+            app.input_mode = InputMode::EnterScope;
+            Action::Continue
+        }
+        _ => Action::Continue,
+    }
+}
+
+fn handle_key_enter_scope(app: &mut App, key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Enter => {
+            let (type_name, _) = COMMIT_TYPES[app.type_selection];
+            let prefix = if app.scope_input.is_empty() {
+                format!("{type_name}: ")
+            } else {
+                format!("{type_name}({}): ", app.scope_input)
+            };
+            app.textarea.insert_str(prefix);
+            app.input_mode = InputMode::EditMessage;
+            Action::Continue
+        }
+        KeyCode::Backspace => {
+            app.scope_input.pop();
+            Action::Continue
+        }
+        KeyCode::Char(c) => {
+            app.scope_input.push(c);
+            Action::Continue
+        }
+        _ => Action::Continue,
+    }
+}
+
+fn handle_key_edit_message(app: &mut App, key: KeyEvent) -> Action {
+    match key {
         // Ctrl+S → submit
         KeyEvent {
             code: KeyCode::Char('s'),
@@ -226,7 +315,7 @@ fn handle_key(app: &mut App, key: KeyEvent) -> Action {
             ..
         } => Action::Submit,
 
-        // Ctrl+Enter → submit (crossterm sends Enter with NONE or CONTROL depending on terminal)
+        // Ctrl+Enter → submit
         KeyEvent {
             code: KeyCode::Enter,
             modifiers: KeyModifiers::CONTROL,
