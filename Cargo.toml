@@ -1,6 +1,6 @@
 [package]
 name = "cq"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A TUI git commit tool that runs pre-commit hooks in the background"
 license = "MIT"
