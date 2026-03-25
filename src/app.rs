@@ -59,10 +59,16 @@ pub struct App<'a> {
     pub input_mode: InputMode,
     pub type_selection: usize,
     pub scope_input: String,
+    pub recent_commits: Vec<String>,
 }
 
 impl<'a> App<'a> {
-    fn new(commit_opts: CommitOpts, template: Option<String>, staged_files: Vec<String>) -> Self {
+    fn new(
+        commit_opts: CommitOpts,
+        template: Option<String>,
+        staged_files: Vec<String>,
+        recent_commits: Vec<String>,
+    ) -> Self {
         let mut textarea = TextArea::default();
         textarea.set_placeholder_text("Enter commit message...");
         if let Some(ref tmpl) = template {
@@ -87,6 +93,7 @@ impl<'a> App<'a> {
             input_mode,
             type_selection: 0,
             scope_input: String::new(),
+            recent_commits,
         }
     }
 }
@@ -116,6 +123,7 @@ pub async fn run(opts: CommitOpts) -> Result<()> {
         git::commit_template()
     };
     let staged_files = git::staged_files().unwrap_or_default();
+    let recent_commits = git::recent_commits(5);
 
     let result = run_app(
         &mut terminal,
@@ -123,6 +131,7 @@ pub async fn run(opts: CommitOpts) -> Result<()> {
         opts,
         initial_message,
         staged_files,
+        recent_commits,
     )
     .await;
 
@@ -152,8 +161,9 @@ async fn run_app(
     opts: CommitOpts,
     template: Option<String>,
     staged_files: Vec<String>,
+    recent_commits: Vec<String>,
 ) -> Result<Option<String>> {
-    let mut app = App::new(opts, template, staged_files);
+    let mut app = App::new(opts, template, staged_files, recent_commits);
 
     // Set up hook channel
     let (tx, mut rx) = mpsc::unbounded_channel::<HookEvent>();

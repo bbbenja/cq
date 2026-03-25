@@ -87,6 +87,22 @@ pub fn last_commit_message() -> Option<String> {
     }
 }
 
+/// Return the last N commits as short one-line summaries.
+pub fn recent_commits(n: usize) -> Vec<String> {
+    let output = Command::new("git")
+        .args(["log", &format!("-{n}"), "--format=%h %s"])
+        .output()
+        .ok();
+
+    match output {
+        Some(o) if o.status.success() => String::from_utf8_lossy(&o.stdout)
+            .lines()
+            .map(|l| l.to_string())
+            .collect(),
+        _ => vec![],
+    }
+}
+
 /// Return the list of staged files with their status (e.g. "M  src/main.rs").
 pub fn staged_files() -> Result<Vec<String>> {
     let output = Command::new("git")

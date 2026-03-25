@@ -35,8 +35,22 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     }
     draw_textarea(f, app, left_chunks[1]);
 
-    // Right column: hook panel fills the full height
-    draw_hook_panel(f, app, columns[1]);
+    // Right column: recent commits on top, hook panel below
+    let commits_height = if app.recent_commits.is_empty() {
+        0
+    } else {
+        (app.recent_commits.len() as u16 + 2).min(7)
+    };
+
+    let right_chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(commits_height), Constraint::Min(3)])
+        .split(columns[1]);
+
+    if commits_height > 0 {
+        draw_recent_commits(f, app, right_chunks[0]);
+    }
+    draw_hook_panel(f, app, right_chunks[1]);
 
     // Footer
     draw_footer(f, app, rows[1]);
@@ -119,6 +133,34 @@ fn draw_scope_input(f: &mut Frame, app: &App, area: Rect) {
     ]);
 
     let paragraph = Paragraph::new(content).block(block);
+    f.render_widget(paragraph, area);
+}
+
+fn draw_recent_commits(f: &mut Frame, app: &App, area: Rect) {
+    let lines: Vec<Line> = app
+        .recent_commits
+        .iter()
+        .map(|entry| {
+            // Split "hash subject" — color the hash differently
+            let (hash, subject) = entry.split_once(' ').unwrap_or((entry, ""));
+            Line::from(vec![
+                Span::styled(
+                    format!("  {hash} "),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::DIM),
+                ),
+                Span::styled(subject.to_string(), Style::default().fg(Color::DarkGray)),
+            ])
+        })
+        .collect();
+
+    let block = Block::default()
+        .title(" Recent commits ")
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::DarkGray));
+
+    let paragraph = Paragraph::new(lines).block(block);
     f.render_widget(paragraph, area);
 }
 
