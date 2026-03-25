@@ -26,10 +26,12 @@ pub fn has_staged_changes() -> Result<bool> {
 }
 
 /// Finalize the commit with --no-verify (hooks already ran manually).
-pub fn commit(message: &str) -> Result<String> {
-    let output = Command::new("git")
-        .args(["commit", "--no-verify", "-m", message])
-        .output()?;
+/// `extra_args` are appended to the command (e.g. --amend, --signoff).
+pub fn commit(message: &str, extra_args: &[String]) -> Result<String> {
+    let mut cmd = Command::new("git");
+    cmd.args(["commit", "--no-verify", "-m", message]);
+    cmd.args(extra_args);
+    let output = cmd.output()?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

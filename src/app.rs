@@ -13,6 +13,7 @@ use tui_textarea::TextArea;
 use crate::git;
 use crate::hook::{self, HookEvent};
 use crate::ui;
+use crate::CommitOpts;
 
 #[derive(Debug, Clone)]
 pub enum HookStatus {
@@ -31,10 +32,11 @@ pub struct App<'a> {
     pub tick_count: usize,
     /// Set when user wants to submit but hook is still running
     pub pending_submit: bool,
+    pub commit_opts: CommitOpts,
 }
 
 impl<'a> App<'a> {
-    fn new() -> Self {
+    fn new(commit_opts: CommitOpts) -> Self {
         let mut textarea = TextArea::default();
         textarea.set_placeholder_text("Enter commit message...");
         Self {
@@ -43,15 +45,16 @@ impl<'a> App<'a> {
             hook_output: Vec::new(),
             tick_count: 0,
             pending_submit: false,
+            commit_opts,
         }
     }
 }
 
-pub async fn run() -> Result<()> {
+pub async fn run(opts: CommitOpts) -> Result<()> {
     // Pre-flight checks
     git::ensure_in_repo()?;
 
-    if !git::has_staged_changes()? {
+    if !opts.skip_staged_check() && !git::has_staged_changes()? {
         anyhow::bail!("Nothing to commit (no staged changes). Use `git add` first.");
     }
 
@@ -65,7 +68,7 @@ pub async fn run() -> Result<()> {
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
 
-    let result = run_app(&mut terminal, hook_path).await;
+    let result = run_app(&mut terminal, hook_path, opts).await;
 
     // Restore terminal
     disable_raw_mode()?;
@@ -90,8 +93,9 @@ pub async fn run() -> Result<()> {
 async fn run_app(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     hook_path: Option<std::path::PathBuf>,
+    opts: CommitOpts,
 ) -> Result<Option<String>> {
-    let mut app = App::new();
+    let mut app = App::new(opts);
 
     // Set up hook channel
     let (tx, mut rx) = mpsc::unbounded_channel::<HookEvent>();
@@ -212,6 +216,6 @@ fn do_commit(app: &App) -> Result<Option<String>> {
     if message.is_empty() {
         return Ok(None);
     }
-    let output = git::commit(&message)?;
+    let output = git::commit(&message, &app.commit_opts.extra_args)?;
     Ok(Some(output))
 }
