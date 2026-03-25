@@ -280,6 +280,8 @@ fn draw_footer(f: &mut Frame, app: &App, area: Rect) {
             let mut s = vec![
                 Span::styled("  Ctrl+S", key_style),
                 Span::raw(": commit   "),
+                Span::styled("Ctrl+T", key_style),
+                Span::raw(": type   "),
                 Span::styled("Ctrl+C", key_style),
                 Span::raw("/"),
                 Span::styled("Esc", key_style),

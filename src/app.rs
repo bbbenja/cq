@@ -319,6 +319,18 @@ fn handle_key_enter_scope(app: &mut App, key: KeyEvent) -> Action {
 
 fn handle_key_edit_message(app: &mut App, key: KeyEvent) -> Action {
     match key {
+        // Ctrl+T → enter conventional commit type selector
+        KeyEvent {
+            code: KeyCode::Char('t'),
+            modifiers: KeyModifiers::CONTROL,
+            ..
+        } => {
+            app.input_mode = InputMode::SelectType;
+            app.type_selection = 0;
+            app.scope_input.clear();
+            Action::Continue
+        }
+
         // Ctrl+S → submit
         KeyEvent {
             code: KeyCode::Char('s'),
