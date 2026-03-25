@@ -3,15 +3,15 @@
 A Rust TUI tool that lets you type your commit message while pre-commit hooks run in the background. No more waiting.
 
 ```
-┌─ Commit message ─────────────────────────────┐
-│                                               │
-│  fix: resolve race condition in worker pool   │
-│                                               │
-├─ Pre-commit hook ─────────────────────────────┤
-│  ✅ Passed (1.3s)                             │
-│                                               │
-└───────────────────────────────────────────────┘
-  Ctrl+S: commit   Ctrl+C: abort
+┌─ Staged files (2) ──────────┬─ Pre-commit hook ─────────────┐
+│  M  src/main.rs             │  ✅ Passed (1.3s)             │
+│  A  src/utils.rs            │                               │
+├─ Commit message ────────────┤                               │
+│                             │                               │
+│  fix: resolve race in pool  │                               │
+│                             │                               │
+└─────────────────────────────┴───────────────────────────────┘
+  Ctrl+S: commit   Ctrl+T: type   Ctrl+C/Esc: abort
 ```
 
 ## Install
@@ -40,25 +40,63 @@ cq
 
 The TUI opens immediately. Start typing your commit message — the pre-commit hook is already running in the background.
 
+### CLI flags
+
+| Flag | Description |
+|---|---|
+| `--amend` | Amend the previous commit (pre-fills the message) |
+| `-s` / `--signoff` | Add Signed-off-by trailer |
+| `-a` / `--all` | Stage all modified/deleted files before committing |
+| `--author AUTHOR` | Override the commit author |
+| `--date DATE` | Override the author date |
+| `--allow-empty` | Allow empty commits |
+| `-c` / `--conventional` | Start with the conventional commit type selector |
+
 ### Keybindings
 
 | Key | Action |
 |---|---|
 | **Ctrl+S** / **Ctrl+Enter** | Submit commit |
+| **Ctrl+T** | Open conventional commit type selector |
+| **Ctrl+R** | Retry failed hook |
+| **Alt+Up** / **Alt+Down** | Scroll hook output |
 | **Esc** / **Ctrl+C** | Abort |
+
+### Layout
+
+The TUI is split into two columns:
+
+- **Left** — staged files list (color-coded: green=added, yellow=modified, red=deleted) and the commit message editor
+- **Right** — live pre-commit hook output with scrollable log
 
 ### Hook status
 
 - **⏳ Running...** — hook is executing, with live output
 - **✅ Passed** — hook succeeded, ready to commit
-- **❌ Failed** — hook failed, commit blocked (output shown in red)
+- **❌ Failed** — hook failed, commit blocked (press Ctrl+R to retry)
 
 If you submit while the hook is still running, cq waits for it to finish and commits automatically on success.
 
 If no pre-commit hook is found, cq commits directly.
+
+### Conventional commits
+
+Press **Ctrl+T** (or start with `cq -c`) to open the type selector:
+
+1. Pick a type (feat, fix, chore, refactor, docs, test, style, ci, perf, build)
+2. Optionally enter a scope
+3. The prefix is inserted into the message editor (e.g. `feat(api): `)
+
+### Hook manager support
+
+cq supports hooks managed by [Husky](https://typicode.github.io/husky/), [lefthook](https://github.com/evilmartians/lefthook), and any tool that sets `core.hooksPath`. It also reads `commit.template` from git config.
 
 ## Requirements
 
 - macOS or Linux
 - Rust stable toolchain
 - Git
+
+## License
+
+MIT — see [LICENSE](LICENSE).
