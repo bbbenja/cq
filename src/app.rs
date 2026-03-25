@@ -34,6 +34,8 @@ pub struct App<'a> {
     pub pending_submit: bool,
     pub commit_opts: CommitOpts,
     pub staged_files: Vec<String>,
+    pub hook_scroll: usize,
+    pub hook_auto_scroll: bool,
 }
 
 impl<'a> App<'a> {
@@ -52,6 +54,8 @@ impl<'a> App<'a> {
             pending_submit: false,
             commit_opts,
             staged_files,
+            hook_scroll: 0,
+            hook_auto_scroll: true,
         }
     }
 }
@@ -129,6 +133,9 @@ async fn run_app(
             match evt {
                 HookEvent::Output(line) => {
                     app.hook_output.push(line);
+                    if app.hook_auto_scroll {
+                        app.hook_scroll = app.hook_output.len().saturating_sub(1);
+                    }
                 }
                 HookEvent::Finished {
                     success,
@@ -214,6 +221,30 @@ fn handle_key(app: &mut App, key: KeyEvent) -> Action {
             modifiers: KeyModifiers::CONTROL,
             ..
         } => Action::Submit,
+
+        // Alt+Up / Alt+Down → scroll hook output
+        KeyEvent {
+            code: KeyCode::Up,
+            modifiers: KeyModifiers::ALT,
+            ..
+        } => {
+            app.hook_scroll = app.hook_scroll.saturating_sub(1);
+            app.hook_auto_scroll = false;
+            Action::Continue
+        }
+        KeyEvent {
+            code: KeyCode::Down,
+            modifiers: KeyModifiers::ALT,
+            ..
+        } => {
+            if app.hook_scroll < app.hook_output.len().saturating_sub(1) {
+                app.hook_scroll += 1;
+            }
+            if app.hook_scroll >= app.hook_output.len().saturating_sub(1) {
+                app.hook_auto_scroll = true;
+            }
+            Action::Continue
+        }
 
         // Everything else goes to the textarea
         _ => {

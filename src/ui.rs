@@ -73,7 +73,46 @@ fn draw_staged_files(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(paragraph, area);
 }
 
+fn hook_output_lines(app: &App, max_lines: usize, color: Color) -> Vec<Line<'static>> {
+    let output = &app.hook_output;
+    if output.is_empty() || max_lines == 0 {
+        return vec![];
+    }
+
+    // Window ends at hook_scroll + 1 (inclusive), capped to output length
+    let end = (app.hook_scroll + 1).min(output.len());
+    let start = end.saturating_sub(max_lines);
+
+    let mut lines = Vec::new();
+
+    if start > 0 {
+        lines.push(Line::from(Span::styled(
+            format!("  ↑ {} more", start),
+            Style::default().fg(Color::DarkGray),
+        )));
+    }
+
+    for line in &output[start..end] {
+        lines.push(Line::from(Span::styled(
+            format!("  {line}"),
+            Style::default().fg(color),
+        )));
+    }
+
+    if end < output.len() {
+        lines.push(Line::from(Span::styled(
+            format!("  ↓ {} more", output.len() - end),
+            Style::default().fg(Color::DarkGray),
+        )));
+    }
+
+    lines
+}
+
 fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {
+    // Inner height = area height - 2 (borders), minus 1 for status line
+    let max_output_lines = (area.height as usize).saturating_sub(3);
+
     let (title, content) = match &app.hook_status {
         HookStatus::NoHook => (
             " Pre-commit hook ",
@@ -91,15 +130,7 @@ fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
             ))];
-            // Show last few lines of output
-            let output = &app.hook_output;
-            let skip = output.len().saturating_sub(5);
-            for line in output.iter().skip(skip) {
-                lines.push(Line::from(Span::styled(
-                    format!("  {line}"),
-                    Style::default().fg(Color::DarkGray),
-                )));
-            }
+            lines.extend(hook_output_lines(app, max_output_lines, Color::DarkGray));
             (" Pre-commit hook ", lines)
         }
         HookStatus::Passed(elapsed) => (
@@ -116,15 +147,7 @@ fn draw_hook_panel(f: &mut Frame, app: &App, area: Rect) {
                 format!("  ❌ Failed ({elapsed:.1}s)"),
                 Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
             ))];
-            // Show last lines of output
-            let output = &app.hook_output;
-            let skip = output.len().saturating_sub(5);
-            for line in output.iter().skip(skip) {
-                lines.push(Line::from(Span::styled(
-                    format!("  {line}"),
-                    Style::default().fg(Color::Red),
-                )));
-            }
+            lines.extend(hook_output_lines(app, max_output_lines, Color::Red));
             (" Pre-commit hook ", lines)
         }
         HookStatus::Waiting => (
