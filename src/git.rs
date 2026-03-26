@@ -103,6 +103,24 @@ pub fn recent_commits(n: usize) -> Vec<String> {
     }
 }
 
+/// Return the branch name.
+pub fn branch_name() -> Option<String> {
+    let output = Command::new("git")
+        .args(["branch", "--show-current"])
+        .output()
+        .ok()?;
+
+    if !output.status.success() {
+        return None;
+    }
+    let msg = String::from_utf8(output.stdout).ok()?.trim().to_string();
+    if msg.is_empty() {
+        None
+    } else {
+        Some(msg)
+    }
+}
+
 /// Return the list of staged files with their status (e.g. "M  src/main.rs").
 pub fn staged_files() -> Result<Vec<String>> {
     let output = Command::new("git")

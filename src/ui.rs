@@ -186,7 +186,13 @@ fn draw_staged_files(f: &mut Frame, app: &App, area: Rect) {
         .collect();
 
     let block = Block::default()
-        .title(format!(" Staged files ({}) ", app.staged_files.len()))
+        .title(format!(
+            " {} - Staged files ({}) ",
+            app.branch_name
+                .clone()
+                .unwrap_or_else(|| "<no-branch>".to_string()),
+            app.staged_files.len()
+        ))
         .borders(Borders::ALL)
         .border_style(Style::default().fg(Color::Cyan));
 
